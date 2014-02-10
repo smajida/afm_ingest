@@ -3,7 +3,7 @@
 -module(afm_ingest).
 -author("Martin Vejmelka <vejmelkam@gmail.com>").
 -export([start/0,init_afm_tables/0]).
--export([detections_since/1,detections_since/2,detections_since/3]).
+-export([detections_since/1,detections_since/2,detections_since/3,last_updated/0]).
 -export([refresh_detections/0]).
 -export([subscribe/0,unsubscribe/0]).
 -include("afm_detection.hrl").
@@ -22,6 +22,9 @@ start() ->
 init_afm_tables() ->
   ensure_table_exists(afm_detection,record_info(fields,afm_detection),[]).
 
+
+last_updated() ->
+  afm_ingest_server:last_updated().
 
 detections_since(Since) ->
   case mnesia:transaction(
