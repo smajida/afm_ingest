@@ -8,21 +8,22 @@ This is accomplished by parsing the KML files which provide fire detections for 
   * AVHRR - Advanced Very High Resolution Radiometer
   * MODIS - Moderate Resolution Imaging Spectroradiometer
 
-The application starts a ````gen_server```` which periodically downloads the KML files corresponding to the selected satellites.
+The ````gen_server```` callback module ````afm_ingest_server```` periodically downloads the KML files corresponding to the selected satellites/instruments.
 
-The queried instruments as well as the query frequency can be modified in the ````afm_ingest.app```` file.  For example, the line
+The queried satellites/instruments as well as the query frequency can be modified in the ````afm_ingest.app```` file.  For example, the line
 
     {mod, {afm_ingest_app, [[viirs,goes,avhrr,modis],10]}},
 
-in the ````.app```` file indicates the wish to ingest fire detections from all four instruments every 10 minutes.
+in the ````.app```` file indicates the wish to ingest fire detections from all four systems every 10 minutes.
 
 
-Note: **The activefiremaps website may change the KML format of these files at any time and in that case this library will stop working until it is updated to reflect the new format.**
+Note: **The activefiremaps website may change the KML format of these files at any time and in that case this library will stop working until it is updated to reflect the new format.  However, KML seems to be the only format in which the data for all four systems is provided.**
 
 ## Retrieving detections
 
 The ````afm_ingest```` module provides a complete API to retrieving the detections.  There are two ways to retrieve detections.
-One can also select detection records from the mnesia ````afm_detection```` table, into which all ingested fire detections are written.
+
+NOTE: All ingested fire detections are written into the mnesia table ````afm_detection````, which can be queried at any time.
 
 ### Push API
 
@@ -53,7 +54,10 @@ retrieves all detections that have a datetime later than ````Since````.  The que
        sensor :: list(),
        recv_station :: list()}).
 
-There are two types of detections, ````centroid```` which provides information only on the center of the fire detection and ````footprint```` which additionally contains a detection polygon stored in the ````det_poly```` field.
+There are two types of detections
+
+  * ````centroid```` which provides information only on the center of the fire detection and
+  * ````footprint```` which additionally contains a detection polygon stored in the ````det_poly```` field.
 
 The sensor field identifies the exact sensor from which the fire detection originates, for example for the MODIS instrument, this field indicates the particular spacecraft (Aqua or Terra).
 
