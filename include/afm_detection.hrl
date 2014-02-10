@@ -1,6 +1,8 @@
 
 -record(afm_detection,
-        {locator,    % {timestamp,lat,lon}
+        {timestamp,
+         lat,
+         lon,
          satellite,
          type,
          confidence,

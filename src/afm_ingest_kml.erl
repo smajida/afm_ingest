@@ -102,7 +102,7 @@ update_with_description(C,Chars) ->
   Sensor = proplists:get_value("Sensor", Plist),
   Recv = proplists:get_value("Receiving Station", Plist),
   Confidence = extract_confidence(proplists:get_value("Confidence", Plist)),
-  C#afm_detection{confidence=Confidence,locator={{Date,Time},Lat,Lon},sensor=Sensor,recv_station=Recv}.
+  C#afm_detection{confidence=Confidence,timestamp={Date,Time},lat=Lat,lon=Lon,sensor=Sensor,recv_station=Recv}.
 
 
 update_with_coords(C,Chars) ->
