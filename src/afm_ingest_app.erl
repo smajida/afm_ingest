@@ -9,8 +9,8 @@
 %% Application callbacks
 %% ===================================================================
 
-start(_StartType, _StartArgs) ->
-    afm_ingest_sup:start_link().
+start(_StartType, Args) ->
+    afm_ingest_sup:start_link(Args).
 
 stop(_State) ->
     ok.
