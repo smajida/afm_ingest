@@ -33,7 +33,7 @@ unsubscribe(Pid) ->
   gen_server:call(?SERVER,{unsubscribe,Pid}).
 
 last_updated() ->
-  gen_sever:call(?SERVER,last_updated).
+  gen_server:call(?SERVER,last_updated).
 
 %% ------------------------------------------------------------------
 %% gen_server Function Definitions
