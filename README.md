@@ -10,7 +10,12 @@ This is accomplished by parsing the KML files which provide fire detections for 
 
 The application starts a ````gen_server```` which periodically downloads the KML files corresponding to the selected satellites.
 
-The queried instruments as well as the query frequency can be modified in the ````afm_ingest.app```` file.
+The queried instruments as well as the query frequency can be modified in the ````afm_ingest.app```` file.  For example, the line
+
+    {mod, {afm_ingest_app, [[viirs,goes,avhrr,modis],10]}},
+
+in the ````.app```` file indicates the wish to ingest fire detections from all four instruments every 10 minutes.
+
 
 Note: **The activefiremaps website may change the KML format of these files at any time and in that case this library will stop working until it is updated to reflect the new format.**
 
@@ -26,7 +31,13 @@ When the caller is no longer interested in updates, ````afm_ingest:unsubscribe()
 
 # Pull API
 
-The function ````afm_ingest:detections_since(Since :: calendar:datetime())```` retrieves all detections that have a timestamp later than ````Since````.  The query area can be restricted to a rectangle by specifying minimum and maximum latitude and longitude using the function ````afm_ingest:detections_since(Since, {MinLat,MaxLat}, {MinLon,MaxLon})````.
+The function
+
+    afm_ingest:detections_since(Since :: datetime())
+    
+retrieves all detections that have a datetime later than ````Since````.  The query area can be restricted to a rectangle by specifying minimum and maximum latitude and longitude using the function
+
+    afm_ingest:detections_since(Since :: datetime(), {MinLat,MaxLat}, {MinLon,MaxLon}).
 
 
 ## The fire detection record
@@ -35,16 +46,12 @@ The function ````afm_ingest:detections_since(Since :: calendar:datetime())```` r
       {timestamp :: calendar:datetime(),
        lat :: number(),
        lon :: number(),
-       satellite :: satellite(),
+       satellite :: avhrr|viirs|goes|modis,
        type :: centroid | footprint,
        confidence :: number() | atom(),
        det_poly :: [{number(),number()}],
        sensor :: list(),
        recv_station :: list()}).
-
-Where ````satellite()```` is a type defined as follows:
-
-    -type satellite() :: avhrr|viirs|goes|modis.
 
 There are two types of detections, ````centroid```` which provides information only on the center of the fire detection and ````footprint```` which additionally contains a detection polygon stored in the ````det_poly```` field.
 
