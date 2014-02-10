@@ -1,4 +1,4 @@
-### afm\_ingest
+# afm\_ingest
 
 An OTP-compliant Erlang application that periodically ingests satellite fire detections from (http://activefiremaps.fs.fed.us).
 This is accomplished by parsing the KML files which provide fire detections for the last 24hrs of up to four systems:
@@ -24,12 +24,12 @@ Note: **The activefiremaps website may change the KML format of these files at a
 The ````afm_ingest```` module provides a complete API to retrieving the detections.  There are two ways to retrieve detections.
 One can also select detection records from the mnesia ````afm_detection```` table, into which all ingested fire detections are written.
 
-# Push API
+### Push API
 
 The function ````afm_ingest:subscribe()```` registeres the caller for messages ````{afm_new_detections, [#afm_detection{}]}````.
 When the caller is no longer interested in updates, ````afm_ingest:unsubscribe()```` deregisteres the calling process from updates.
 
-# Pull API
+### Pull API
 
 The function
 
