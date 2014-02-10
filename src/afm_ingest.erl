@@ -8,6 +8,9 @@
 -include("afm_detection.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
+-type satellite() :: viirs|avhrr|modis|goes.
+-export_type([satellite/0]).
+
 -spec start() -> ok.
 start() ->
   ok = application:start(sasl),

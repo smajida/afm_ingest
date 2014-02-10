@@ -7,6 +7,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("afm_detection.hrl").
 
+-spec retrieve_detections(afm_ingest:satellite()) -> [#afm_detection{}].
 retrieve_detections(Sat) ->
   {ok,Bin} = retrieve_kml(Sat),
   FDs = parse_kml(Bin),
@@ -14,6 +15,7 @@ retrieve_detections(Sat) ->
 
 
 % Parses the KML extracted from the kmz file on the activefiremaps website.
+-spec parse_kml(binary()) -> [#afm_detection{}].
 parse_kml(Binary) when is_binary(Binary) ->
   {ok, {wait_for_placemark,FDs},_} = erlsom:parse_sax(Binary, {wait_for_placemark,[]}, fun extract_centroids/2),
   FDs.
@@ -151,6 +153,7 @@ parse_time([H1,H2,$:,M1,M2|_]) ->
   {Hr,Min,0}.
 
 
+-spec retrieve_kml(afm_ingest:satellite()) -> {ok,binary()} | {error,any()}.
 retrieve_kml(modis) ->
   retrieve_and_unzip("http://activefiremaps.fs.fed.us/data/kml/conus.kmz", "conus.kml");
 
@@ -179,20 +182,5 @@ retrieve_and_unzip(Url, File) ->
     {error, Reason} ->
       {error, Reason}
   end.
-
-
-
-% testing code using kml files in examples folder
-test_parse_sat(Type) ->
-  {ok,B} = file:read_file(lists:flatten(["examples/",Type,"/conus.kml"])),
-  D = parse_kml(B),
-  io:format("~p~n", [D]).
-
-test_parse_viirs() ->
-  test_parse_sat("viirs").
-
-
-test_parse_modis() ->
-  test_parse_sat("modis").
 
 
