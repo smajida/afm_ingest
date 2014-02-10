@@ -1,7 +1,7 @@
 ### afm\_ingest
 
 An OTP-compliant Erlang application that periodically ingests satellite fire detections from (http://activefiremaps.fs.fed.us).
-This is accomplished by parsing the KML files which provide fire detections for the last 24hrs of four systems:
+This is accomplished by parsing the KML files which provide fire detections for the last 24hrs of up to four systems:
 
   * GOES - Geostationary Operational Environmental Satellite
   * VIIRS - Visible Infrared Imaging Radiometer Suite
@@ -10,11 +10,14 @@ This is accomplished by parsing the KML files which provide fire detections for 
 
 The application starts a ````gen_server```` which periodically downloads the KML files corresponding to the selected satellites.
 
+The queried instruments as well as the query frequency can be modified in the ````afm_ingest.app```` file.
+
 Note: **The activefiremaps website may change the KML format of these files at any time and in that case this library will stop working until it is updated to reflect the new format.**
 
 ## Retrieving detections
 
-The ````afm_ingest```` module provides a complete API to retrieving the detections.  There are two ways to retrieve the detections.
+The ````afm_ingest```` module provides a complete API to retrieving the detections.  There are two ways to retrieve detections.
+One can also select detection records from the mnesia ````afm_detection```` table, into which all ingested fire detections are written.
 
 # Push API
 
@@ -45,5 +48,5 @@ Where ````satellite()```` is a type defined as follows:
 
 There are two types of detections, ````centroid```` which provides information only on the center of the fire detection and ````footprint```` which additionally contains a detection polygon stored in the ````det_poly```` field.
 
-The sensor field identifies the exact sensor from which the fire detection originates, for example for the MODIS instrument, this may be Aqua or Terra.
+The sensor field identifies the exact sensor from which the fire detection originates, for example for the MODIS instrument, this field indicates the particular spacecraft (Aqua or Terra).
 
