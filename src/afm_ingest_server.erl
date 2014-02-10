@@ -22,7 +22,7 @@
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
--spec start_link([afm_ingest:satellite()],pos_integer()) -> {ok,pid()} | ignore | {error,any()}.
+-spec start_link([satellite()],pos_integer()) -> {ok,pid()} | ignore | {error,any()}.
 start_link(SatList,TimeoutMin) ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [SatList,[],TimeoutMin,unknown,gb_sets:new()], []).
 
@@ -98,7 +98,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 
 
--spec update_detections_int([afm_ingest:satellite()],[pid()],gb_set()) -> gb_set().
+-spec update_detections_int([satellite()],[pid()],gb_set()) -> gb_set().
 update_detections_int(Sats,Monitors,FDSet) ->
   FDs = lists:flatten(lists:map(fun afm_ingest_kml:retrieve_detections/1, Sats)),
   New = case gb_sets:is_empty(FDSet) of
