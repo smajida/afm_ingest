@@ -4,7 +4,7 @@
 -author("Martin Vejmelka <vejmelkam@gmail.com>").
 -export([start/0,init_afm_tables/0]).
 -export([detections_since/1,detections_since/2,detections_since/3,last_updated/0]).
--export([refresh_detections/0]).
+-export([update_now/0]).
 -export([subscribe/0,unsubscribe/0]).
 -include("afm_detection.hrl").
 -include_lib("stdlib/include/qlc.hrl").
@@ -55,7 +55,7 @@ case mnesia:transaction(
   end.
 
 
-refresh_detections() ->
+update_now() ->
   afm_ingest_server:update_detections_now().
 
 
