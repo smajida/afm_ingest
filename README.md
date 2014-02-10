@@ -26,7 +26,7 @@ When the caller is no longer interested in updates, ````afm_ingest:unsubscribe()
 The function ````afm_ingest:detections_since(Since :: calendar:datetime())```` retrieves all detections that have a timestamp later than ````Since````.  The query area can be restricted to a rectangle by specifying minimum and maximum latitude and longitude using the function ````afm_ingest:detections_since(Since, {MinLat,MaxLat}, {MinLon,MaxLon})````.
 
 
-## Each detection is stored as a record
+## The fire detection record
 
      -record(afm_detection,
       {timestamp :: calendar:datetime(),
