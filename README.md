@@ -8,16 +8,39 @@ This is accomplished by parsing the KML files which provide fire detections for 
   * AVHRR - Advanced Very High Resolution Radiometer
   * MODIS - Moderate Resolution Imaging Spectroradiometer
 
-The ````gen_server```` callback module ````afm_ingest_server```` periodically downloads the KML files corresponding to the selected satellites/instruments.
+The type
 
-The queried satellites/instruments as well as the query frequency can be modified in the ````afm_ingest.app```` file.  For example, the line
+    satellite() :: goes|viirs|avhrr|modis.
 
-    {mod, {afm_ingest_app, [[viirs,goes,avhrr,modis],10]}},
+is used to indicate in which satellites/instruments we are interested.
 
-in the ````.app```` file indicates the wish to ingest fire detections from all four systems every 10 minutes.
+The KMZ files on activefiremaps are available for four regions: CONUS (Contiguous US), Alaska, Hawaii and Canada.  Each of these is assigned an atom
 
+    region() :: conus|alaska|hawaii|canada.
+
+The queried satellites/instruments, regions as well as the query frequency can be modified in the ````afm_ingest.app```` file.  For example, the line
+
+    {mod, {afm_ingest_app, [[{viirs,[canada]},{goes,[conus,alaska]},{avhrr,[conus]},{modis,[conus,hawaii]}],10]}},
+
+in the ````.app```` file indicates the wish to ingest fire detections from all four systems every 10 minutes and VIIRS detections will be retrieved only for the Canada domain, GOES for Contiguous US and Alaska, AVHRR for Contiguous US and MODIS for Contiguous US and Hawaii.
+
+The server responsible for retrieving and parsing the KMZ/KML files will not crash if the files cannot be retrieved or parsed but will send message to the ````error_logger```` event manager.
 
 Note: **The activefiremaps website may change the KML format of these files at any time and in that case this library will stop working until it is updated to reflect the new format.  However, KML seems to be the only format in which the data for all four systems is provided.**
+
+## Error handling
+
+If the ````afm_ingest_server```` encounters any errors when retrieving and parsing the requested KMZ files, it will currently emit errors to the ````error_logger```` but will continue functioning.
+
+All errors that are encountered during retrievel/parsing are stored and can be queried using
+
+    afm_ingest:report_errors()
+
+all errors have the format ````{error,satellite(),region(),atom(),term()}```` where the ````atom()```` is the exception class and ````term()```` is the exception content itself.
+When the errors have been processed and acknowledged, they can be removed from the server using
+
+   afm_ingest:clear_errors().
+
 
 ## Retrieving detections
 
@@ -27,7 +50,8 @@ NOTE: All ingested fire detections are written into the mnesia table ````afm_det
 
 ### Push API
 
-The function ````afm_ingest:subscribe()```` registeres the caller for messages ````{afm_new_detections, [#afm_detection{}]}````.
+The function ````afm_ingest:subscribe()```` registeres the caller for messages ````{afm_new_detections, [#afm_detection{}]}```` and ````{afm_errors, ErrorList}````.
+See above the the format of the errors in the ````ErrorList````.
 When the caller is no longer interested in updates, ````afm_ingest:unsubscribe()```` deregisteres the calling process from updates.
 
 ### Pull API
@@ -35,11 +59,18 @@ When the caller is no longer interested in updates, ````afm_ingest:unsubscribe()
 The function
 
     afm_ingest:detections_since(Since :: datetime())
-    
+
 retrieves all detections that have a datetime later than ````Since````.  The query area can be restricted to a rectangle by specifying minimum and maximum latitude and longitude using the function
 
     afm_ingest:detections_since(Since :: datetime(), {MinLat,MaxLat}, {MinLon,MaxLon}).
 
+### Out of band refresh
+
+Invocation of 
+
+    afm_ingest:update_now()
+
+will force the system to immediatly retrieve and process KMZ files according to application configuration.
 
 ## The fire detection record
 

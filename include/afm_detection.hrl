@@ -1,6 +1,7 @@
 
 -type satellite() :: viirs|avhrr|modis|goes.
--export_type([satellite/0]).
+-type region() :: conus|canada|hawaii|alaska.
+-export_type([satellite/0,region/0]).
 
 -record(afm_detection,
   {timestamp :: calendar:datetime(),

@@ -2,16 +2,19 @@
 
 -module(afm_ingest_kml).
 -author("Martin Vejmelka <vejmelkam@gmail.com>").
--export([parse_kml/1,retrieve_kml/1,retrieve_detections/1]).
+-export([retrieve_detections/2]).
+-export([parse_kmz_file/2,parse_kml_file/1]).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("afm_detection.hrl").
 
--spec retrieve_detections(afm_ingest:satellite()) -> [#afm_detection{}].
-retrieve_detections(Sat) ->
-  {ok,Bin} = retrieve_kml(Sat),
+-spec retrieve_detections(satellite(),region() | [region()]) -> [#afm_detection{}].
+retrieve_detections(Sat,Region) when is_atom(Region) ->
+  {ok,Bin} = retrieve_kml(Sat,Region),
   FDs = parse_kml(Bin),
-  lists:map(fun (C) -> C#afm_detection{satellite=Sat} end, FDs).
+  lists:map(fun (C) -> C#afm_detection{satellite=Sat} end, FDs);
+retrieve_detections(Sat,Regions) when is_list(Regions) ->
+  lists:flatten(lists:map(fun (R) -> retrieve_detections(Sat,R) end, Regions)).
 
 
 % Parses the KML extracted from the kmz file on the activefiremaps website.
@@ -19,6 +22,17 @@ retrieve_detections(Sat) ->
 parse_kml(Binary) when is_binary(Binary) ->
   {ok, {wait_for_placemark,FDs},_} = erlsom:parse_sax(Binary, {wait_for_placemark,[]}, fun extract_centroids/2),
   FDs.
+
+-spec parse_kml_file(string()) -> [#afm_detection{}].
+parse_kml_file(KmlPath) ->
+  {ok,Bin} = file:read_file(KmlPath),
+  parse_kml(Bin).
+
+-spec parse_kmz_file(string(),string()) -> [#afm_detection{}].
+parse_kmz_file(KmzPath,KmlFile) ->
+  {ok,Bin} = file:read_file(KmzPath),
+  {ok,KmlBin} = extract_kml_from_kmz(Bin,KmlFile),
+  parse_kml(KmlBin).
 
 
 % SAX callback function to parse all placemark elements that are centroids or footprints.
@@ -153,34 +167,55 @@ parse_time([H1,H2,$:,M1,M2|_]) ->
   {Hr,Min,0}.
 
 
--spec retrieve_kml(afm_ingest:satellite()) -> {ok,binary()} | {error,any()}.
-retrieve_kml(modis) ->
-  retrieve_and_unzip("http://activefiremaps.fs.fed.us/data/kml/conus.kmz", "conus.kml");
 
-retrieve_kml(avhrr) ->
-  retrieve_and_unzip("http://activefiremaps.fs.fed.us/data_avhrr/kml/conus.kmz", "conus.kml");
+-spec kml_basename(region()) -> string().
+kml_basename(conus) ->
+  "conus";
+kml_basename(canada) ->
+  "canada";
+kml_basename(hawaii) ->
+  "hawaii";
+kml_basename(alaska) ->
+  "alaska".
 
-retrieve_kml(goes) ->
-  retrieve_and_unzip("http://activefiremaps.fs.fed.us/data_goes/kml/conus.kmz", "conus.kml");
+-spec url_base(satellite()) -> string().
+url_base(modis) ->
+  "http://activefiremaps.fs.fed.us/data/kml/";
+url_base(avhrr) ->
+  "http://activefiremaps.fs.fed.us/data_avhrr/kml/";
+url_base(goes) ->
+  "http://activefiremaps.fs.fed.us/data_goes/kml/";
+url_base(viirs) ->
+  "http://activefiremaps.fs.fed.us/data_viirs/kml/".
 
-retrieve_kml(viirs) ->
-  retrieve_and_unzip("http://activefiremaps.fs.fed.us/data_viirs/kml/conus.kmz", "conus.kml").
+
+-spec retrieve_kml(satellite(),region()) -> {ok,binary()} | {error,any()}.
+retrieve_kml(Sat,Region) ->
+  Url = lists:flatten([url_base(Sat),kml_basename(Region),".kmz"]),
+  KmlFile = kml_basename(Region) ++ ".kml",
+  retrieve_and_unzip(Url,KmlFile).
 
 
+-spec retrieve_and_unzip(string(),string()) -> {ok,binary()} | {error, term()}.
 retrieve_and_unzip(Url, File) ->
   case httpc:request(get, {Url, []}, [], [{body_format,binary}]) of
     {ok, {{_, 200, _}, _, Bdy}} ->
-      {ok, Files} = zip:unzip(Bdy, [memory]),
-      case proplists:get_value(File, Files) of
-        undefined ->
-          {error, file_not_found};
-        Bin ->
-          {ok, Bin}
-      end;
+      extract_kml_from_kmz(Bdy,File);
     {ok, {{_, Other, _}, _, _}} ->
       {error, Other};
     {error, Reason} ->
       {error, Reason}
+  end.
+
+
+-spec extract_kml_from_kmz(string(),string()) -> {ok,binary()} | {error,term()}.
+extract_kml_from_kmz(KmzBinary,KmlFile) ->
+  {ok, Files} = zip:unzip(KmzBinary, [memory]),
+  case proplists:get_value(KmlFile, Files) of
+    undefined ->
+      {error, file_not_found};
+    Bin ->
+      {ok, Bin}
   end.
 
 
