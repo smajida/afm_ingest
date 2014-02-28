@@ -11,9 +11,9 @@
 
 -spec start() -> ok.
 start() ->
-  ok = application:start(inets),
+  application:start(inets),
   mnesia:create_schema([node()]),
-  ok = application:start(mnesia),
+  application:start(mnesia),
   init_afm_tables(),
   ok = application:start(afm_ingest).
 

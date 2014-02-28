@@ -1,14 +1,12 @@
 {application, afm_ingest,
  [
-   {description, "ActiveFireMap website fire detection retrieval and management."},
-   {vsn, "1.0"},
-   {mod, {afm_ingest_app, [[{viirs,[conus,canada]},
-                            {goes,[conus,canada]},
-                            {avhrr,[conus,canada]},
-                            {modis,[conus,canada]}],10]}},
-   {modules, [afm_ingest_app,afm_ingest_sup,afm_ingest_server,afm_ingest_kml,afm_ingest_utils]},
-   {registered, []},
-   {applications, [kernel,stdlib,sasl,inets,mnesia]},
-   {included_applications, []},
-   {env, []}
+  {description, "ActiveFireMap website fire detection retrieval and management."},
+  {vsn, "1.0"},
+  {mod, {afm_ingest_app, [[{viirs,[conus,canada]}, {goes,[conus,canada]}, {avhrr,[conus,canada]}, {modis,[conus,canada]}],10]}},
+  {modules, [afm_ingest_app,afm_ingest_sup,afm_ingest_server,afm_ingest_kml,afm_ingest_utils]},
+  {registered, []},
+  {applications, [kernel,stdlib,inets,mnesia]},
+  {included_applications, []},
+  {env, []}
 ]}.
+

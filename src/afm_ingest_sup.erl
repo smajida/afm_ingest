@@ -25,6 +25,6 @@ start_link(Args) ->
 
 init(Args) ->
     {ok, { {one_for_one, 5, 10},
-          [{afm_ingest_server, {afm_ingest_server, start_link, Args},
-            permanent, brutal_kill, worker, [afm_ingest_server]}]}}.
+          [{afm_ingest_server, {afm_ingest_server,start_link,Args},
+            permanent, brutal_kill, worker, [afm_ingest_server]}] }}.
 
