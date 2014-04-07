@@ -5,6 +5,7 @@
 -export([update_now/0]).
 -export([subscribe/0,unsubscribe/0]).
 -export([parse_kmz_file/2,parse_kml_file/1,store_detections/1]).
+-export([to_geojson/1]).
 -export([report_errors/0,clear_errors/0]).
 -include("afm_detection.hrl").
 -include_lib("stdlib/include/qlc.hrl").
@@ -98,6 +99,11 @@ report_errors() ->
 -spec clear_errors() -> ok.
 clear_errors() ->
   afm_ingest_server:clear_errors().
+
+
+-spec to_geojson([#afm_detection{}]) -> string().
+to_geojson(Ds) ->
+  afm_ingest_export:to_geojson(Ds).
 
 
 %-----------------------

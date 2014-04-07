@@ -111,10 +111,10 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
-
 
 
 -spec update_detections_int([{satellite(),[region()]}],[pid()],gb_set()) -> {[retr_error()],gb_set()}.
@@ -135,12 +135,10 @@ update_detections_int(IngestList,Monitors,FDSet) ->
     [] -> ok;
     _ -> notify_monitors({afm_new_detections,New},Monitors)
   end,
-
   case Errors of
     [] -> ok;
     _ -> notify_monitors({afm_errors,Errors},Monitors)
   end,
-
   mnesia:transaction(fun() -> lists:foreach(fun mnesia:write/1, FDs) end, [], 3),
   {Errors,gb_sets:from_list(FDs)}.
 
@@ -149,9 +147,11 @@ update_detections_int(IngestList,Monitors,FDSet) ->
 safe_retrieve_detections({Sat,Regions}) ->
   Reports = lists:map(fun (R) ->
       try
-        {ok, afm_ingest_kml:retrieve_detections(Sat,R)}
+        D = afm_ingest_kml:retrieve_detections(Sat,R),
+        error_logger:info_msg("afm_ingest_server: acquired ~p satellite detections for sat ~p and regions ~w.~n", [length(D),Sat,Regions]),
+        {ok, D}
       catch Cls:Exc ->
-        error_logger:error_msg("afm_ingest_server:retrieve_detections(Sat=~p, Region=~p) encountered exception ~p:~p,~nreturning empty list.",
+        error_logger:error_msg("afm_ingest_server:retrieve_detections(Sat=~p, Region=~p) encountered exception ~p:~p,~nreturning empty list.~n",
                                 [Sat,R,Cls,Exc]),
         {{error,Sat,R,calendar:local_time(),Cls,Exc},[]}
       end
@@ -167,6 +167,7 @@ notify_monitors([],_Monitors) ->
 notify_monitors(Msg,Monitors) ->
   lists:map(fun (X) -> X ! Msg end, Monitors),
   ok.
+
 
 -spec find_detections_not_in_table([#afm_detection{}]) -> [#afm_detection{}].
 find_detections_not_in_table(FDs) ->
