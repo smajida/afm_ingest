@@ -16,12 +16,26 @@ to_esmf({{Y,M,D},{H,Min,S}}) ->
   lists:flatten(io_lib:format("~4..0B~2..0B~2..0B_~2..0B~2..0B~2..0B", [Y,M,D,H,Min,S])).
 
 -spec fd_to_geojson(#afm_detection{}) -> string().
-fd_to_geojson(#afm_detection{timestamp=TS,lat=Lat,lon=Lon,confidence=C,satellite=S}) ->
+fd_to_geojson(#afm_detection{timestamp=TS,lat=Lat,lon=Lon,type=centroid,confidence=C,satellite=S}) ->
   [ "{\n",
     "  \"type\": \"Feature\",\n",
     "  \"geometry\": {\n",
     "    \"type\": \"Point\",\n",
     "    \"coordinates\": [",number_to_list(Lon),",",number_to_list(Lat),"]\n",
+    "  },\n",
+    "  \"properties\" : {\n",
+    "    \"timestamp_gmt\": \"", to_esmf(TS), "\",\n",
+    "    \"confidence\": ",confidence_to_list(C),",\n",
+    "    \"satellite\": ",satellite_to_list(S),"\n",
+    "  }\n",
+    "}\n"];
+fd_to_geojson(#afm_detection{timestamp=TS,type=footprint,det_poly=P,confidence=C,satellite=S}) ->
+  CC = lists:map(fun ({Lon,Lat}) -> io_lib:format("[~p,~p]",[Lon,Lat]) end, P),
+  [ "{\n",
+    "  \"type\": \"Feature\",\n",
+    "  \"geometry\": {\n",
+    "    \"type\": \"Polygon\",\n",
+    "    \"coordinates\": [[",string:join(CC,","),"]]",
     "  },\n",
     "  \"properties\" : {\n",
     "    \"timestamp_gmt\": \"", to_esmf(TS), "\",\n",
