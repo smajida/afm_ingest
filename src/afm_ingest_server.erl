@@ -33,7 +33,7 @@ start_link(IngestList,TimeoutMin) ->
 
 -spec update_detections_now() -> ok.
 update_detections_now() ->
-  gen_server:call(?SERVER,update_detections_now,30*1000).
+  ?SERVER ! update_detections_now.
 
 -spec subscribe(pid()) -> ok.
 subscribe(Pid) ->
@@ -82,9 +82,6 @@ handle_call(Request, _From, State=[IngestList,Monitors,TimeoutMins,LastUpdate,La
       {reply,ok,[IngestList,lists:delete(Pid,Monitors),TimeoutMins,LastUpdate,LastFDs,Errors]};
     last_updated ->
       {reply, LastUpdate, State};
-    update_detections_now ->
-      {NewErrors,NewFDs} = update_detections_int(IngestList,Monitors,LastFDs),
-      {reply, ok, [IngestList,Monitors,TimeoutMins,calendar:local_time(),NewFDs,NewErrors ++ Errors]};
     report_errors ->
       {reply, Errors, State};
     clear_errors ->
@@ -102,6 +99,9 @@ handle_info(update_detections_timeout, [IngestList,Monitors,TimeoutMins,_LastUpd
   {NewErrors,FDset} = update_detections_int(IngestList,Monitors,LastFDs),
   timer:send_after(TimeoutMins * 60 * 1000, update_detections_timeout),
   {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),FDset,NewErrors ++ Errors]};
+handle_info(update_detections_now, [IngestList,Monitors,TimeoutMins,_LastUpdate,LastFDs,Errors]) ->
+  {NewErrors,NewFDs} = update_detections_int(IngestList,Monitors,LastFDs),
+  {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),NewFDs,NewErrors ++ Errors]};
 handle_info(_Info,State) ->
   {noreply,State}.
 
