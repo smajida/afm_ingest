@@ -33,7 +33,7 @@ start_link(IngestList,TimeoutMin) ->
 
 -spec update_detections_now() -> ok.
 update_detections_now() ->
-  gen_server:call(?SERVER,update_detections_now).
+  gen_server:call(?SERVER,update_detections_now,30*1000).
 
 -spec subscribe(pid()) -> ok.
 subscribe(Pid) ->
@@ -176,4 +176,3 @@ find_detections_not_in_table(FDs) ->
       lists:filter(fun (FD=#afm_detection{timestamp=T}) ->
             not lists:member(FD, mnesia:read(afm_detection,T)) end, FDs) end),
   New.
-
