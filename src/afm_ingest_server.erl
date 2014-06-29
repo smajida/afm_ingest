@@ -89,6 +89,8 @@ handle_call(Request, _From, State=[IngestList,Monitors,TimeoutMins,LastUpdate,La
       {reply, Errors, State};
     clear_errors ->
       {reply, ok, [IngestList,Monitors,TimeoutMins,LastUpdate,LastFDs,[]]};
+    retrieve_monitors ->
+      {reply, Monitors, State};
     current_detections ->
       {reply, gb_sets:to_list(LastFDs), State};
     _ ->
@@ -98,16 +100,16 @@ handle_call(Request, _From, State=[IngestList,Monitors,TimeoutMins,LastUpdate,La
 handle_cast(_Msg, State) ->
   {noreply,State}.
 
-handle_info(update_detections_timeout, S=[IngestList,Monitors,TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
+handle_info(update_detections_timeout, S=[IngestList,_Monitors,TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
   timer:send_after(TimeoutMins * 60 * 1000, update_detections_timeout),
-  update_detections_async(IngestList,Monitors,LastFDs),
+  update_detections_async(IngestList,LastFDs),
   {noreply, S};
-handle_info(update_detections_now, S=[IngestList,Monitors,_TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
-  update_detections_async(IngestList,Monitors,LastFDs),
+handle_info(update_detections_now, S=[IngestList,_Monitors,_TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
+  update_detections_async(IngestList,LastFDs),
   {noreply, S};
 handle_info({detection_results,NewErrors,FDSet}, [IngestList,Monitors,TimeoutMins,_LastUpdate,_LastFDs,Errors]) ->
-    error_logger:info_msg("afm_ingest_server: ~p new detection results have arrived with ~p errors, [have ~p monitors].~n",
-                          [gb_sets:size(FDSet),length(NewErrors),length(Monitors)]),
+    error_logger:info_msg("afm_ingest_server: ~p new detection results have arrived with ~p errors.~n",
+                          [gb_sets:size(FDSet),length(NewErrors)]),
     {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),FDSet,NewErrors ++ Errors]};
 handle_info(_Info,State) ->
   {noreply,State}.
@@ -123,16 +125,20 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
 
--spec update_detections_async([term()],[pid()],gb_set()) -> ok.
-update_detections_async(IngestList,Monitors,LastFDs) ->
+
+retrieve_monitors() ->
+  gen_server:call(?SERVER,retrieve_monitors).
+
+-spec update_detections_async([term()],gb_set()) -> ok.
+update_detections_async(IngestList,LastFDs) ->
   spawn(fun() ->
-    {NewErrors,FDSet} = update_detections_int(IngestList,Monitors,LastFDs),
+    {NewErrors,FDSet} = update_detections_int(IngestList,LastFDs),
     ?SERVER ! {detection_results, NewErrors,FDSet} end),
   ok.
 
 
--spec update_detections_int([{satellite(),[region()]}],[pid()],gb_set()) -> {[retr_error()],gb_set()}.
-update_detections_int(IngestList,Monitors,FDSet) ->
+-spec update_detections_int([{satellite(),[region()]}],gb_set()) -> {[retr_error()],gb_set()}.
+update_detections_int(IngestList,FDSet) ->
   Reports = lists:map(fun safe_retrieve_detections/1, IngestList),
   {ErrorsL, FDss} = lists:unzip(Reports),
   FDs = lists:flatten(FDss),
@@ -151,8 +157,9 @@ update_detections_int(IngestList,Monitors,FDSet) ->
       error_logger:info_msg("afm_ingest_server: no new detections found.~n"),
       ok;
     _ ->
-      error_logger:info_msg("afm_ingest_server: sending new detections to ~p monitors.~n", [length(Monitors)]),
-      lists:map(fun (X) -> X ! {afm_new_detections,New,Errors} end, Monitors)
+      Ms = retrieve_monitors(),
+      error_logger:info_msg("afm_ingest_server: sending new detections to the monitors ~p.~n", [Ms]),
+      lists:map(fun (X) -> X ! {afm_new_detections,New,Errors} end, Ms)
   end,
   mnesia:transaction(fun() -> lists:foreach(fun mnesia:write/1, FDs) end, [], 3),
   {Errors,gb_sets:from_list(FDs)}.
