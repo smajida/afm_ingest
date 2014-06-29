@@ -100,13 +100,11 @@ handle_cast(_Msg, State) ->
 
 handle_info(update_detections_timeout, S=[IngestList,Monitors,TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
   timer:send_after(TimeoutMins * 60 * 1000, update_detections_timeout),
-  spawn(fun () ->
-    {NewErrors,FDSet} = update_detections_int(IngestList,Monitors,LastFDs), self() ! {detection_results, NewErrors,FDSet} end),
-    {noreply, S};
+  update_detections_async(IngestList,Monitors,LastFDs),
+  {noreply, S};
 handle_info(update_detections_now, S=[IngestList,Monitors,_TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
-  spawn(fun () ->
-    {NewErrors,FDSet} = update_detections_int(IngestList,Monitors,LastFDs), self() ! {detection_results, NewErrors,FDSet} end),
-    {noreply, S};
+  update_detections_async(IngestList,Monitors,LastFDs),
+  {noreply, S};
 handle_info({detection_results,NewErrors,FDSet}, [IngestList,Monitors,TimeoutMins,_LastUpdate,_LastFDs,Errors]) ->
     error_logger:info_msg("afm_ingest_server: ~p new detection results have arrived with ~p errors.", [gb_sets:size(FDSet),length(NewErrors)]),
     {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),FDSet,NewErrors ++ Errors]};
@@ -123,6 +121,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% ------------------------------------------------------------------
 %% Internal Function Definitions
 %% ------------------------------------------------------------------
+
+-spec update_detections_async([term()],[pid()],gb_set()) -> ok.
+update_detections_async(IngestList,Monitors,LastFDs) ->
+  spawn(fun() ->
+    {NewErrors,FDSet} = update_detections_int(IngestList,Monitors,LastFDs),
+    ?SERVER ! {detection_results, NewErrors,FDSet} end),
+  ok.
 
 
 -spec update_detections_int([{satellite(),[region()]}],[pid()],gb_set()) -> {[retr_error()],gb_set()}.
@@ -144,6 +149,7 @@ update_detections_int(IngestList,Monitors,FDSet) ->
     {[],[]} ->
       ok;
     _ ->
+      error_logger:info_msg("afm_ingest_server: sending new detections to ~p monitors.", [length(Monitors)]),
       notify_monitors({afm_new_detections,New,Errors},Monitors)
   end,
   mnesia:transaction(fun() -> lists:foreach(fun mnesia:write/1, FDs) end, [], 3),
@@ -183,3 +189,4 @@ find_detections_not_in_table(FDs) ->
       lists:filter(fun (FD=#afm_detection{timestamp=T}) ->
             not lists:member(FD, mnesia:read(afm_detection,T)) end, FDs) end),
   New.
+
