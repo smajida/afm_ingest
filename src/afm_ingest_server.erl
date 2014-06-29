@@ -106,7 +106,8 @@ handle_info(update_detections_now, S=[IngestList,Monitors,_TimeoutMins,_LastUpda
   update_detections_async(IngestList,Monitors,LastFDs),
   {noreply, S};
 handle_info({detection_results,NewErrors,FDSet}, [IngestList,Monitors,TimeoutMins,_LastUpdate,_LastFDs,Errors]) ->
-    error_logger:info_msg("afm_ingest_server: ~p new detection results have arrived with ~p errors.", [gb_sets:size(FDSet),length(NewErrors)]),
+    error_logger:info_msg("afm_ingest_server: ~p new detection results have arrived with ~p errors, [have ~p monitors].~n",
+                          [gb_sets:size(FDSet),length(NewErrors),length(Monitors)]),
     {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),FDSet,NewErrors ++ Errors]};
 handle_info(_Info,State) ->
   {noreply,State}.
@@ -147,10 +148,10 @@ update_detections_int(IngestList,Monitors,FDSet) ->
   end,
   case {New,Errors} of
     {[],[]} ->
-      error_logger:info_msg("afm_ingest_server: no new detections found."),
+      error_logger:info_msg("afm_ingest_server: no new detections found.~n"),
       ok;
     _ ->
-      error_logger:info_msg("afm_ingest_server: sending new detections to ~p monitors.", [length(Monitors)]),
+      error_logger:info_msg("afm_ingest_server: sending new detections to ~p monitors.~n", [length(Monitors)]),
       lists:map(fun (X) -> X ! {afm_new_detections,New,Errors} end, Monitors)
   end,
   mnesia:transaction(fun() -> lists:foreach(fun mnesia:write/1, FDs) end, [], 3),
