@@ -74,11 +74,14 @@ handle_call(Request, _From, State=[IngestList,Monitors,TimeoutMins,LastUpdate,La
     {subscribe,Pid} ->
       case lists:member(Pid,Monitors) of
         true ->
+          error_logger:info_msg("afm_ingest_server: pid ~p was already subscribed for updates.~n", [Pid]),
           {reply,ok,State};
         false ->
+          error_logger:info_msg("afm_ingest_server: subscribed pid ~p for updates.~n", [Pid]),
           {reply,ok,[IngestList,[Pid|Monitors],TimeoutMins,LastUpdate,LastFDs,Errors]}
       end;
     {unsubscribe,Pid} ->
+      error_logger:info_msg("afm_ingest_server: unsubscribed pid ~p for updates.~n", [Pid]),
       {reply,ok,[IngestList,lists:delete(Pid,Monitors),TimeoutMins,LastUpdate,LastFDs,Errors]};
     last_updated ->
       {reply, LastUpdate, State};
@@ -95,13 +98,18 @@ handle_call(Request, _From, State=[IngestList,Monitors,TimeoutMins,LastUpdate,La
 handle_cast(_Msg, State) ->
   {noreply,State}.
 
-handle_info(update_detections_timeout, [IngestList,Monitors,TimeoutMins,_LastUpdate,LastFDs,Errors]) ->
-  {NewErrors,FDset} = update_detections_int(IngestList,Monitors,LastFDs),
+handle_info(update_detections_timeout, S=[IngestList,Monitors,TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
   timer:send_after(TimeoutMins * 60 * 1000, update_detections_timeout),
-  {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),FDset,NewErrors ++ Errors]};
-handle_info(update_detections_now, [IngestList,Monitors,TimeoutMins,_LastUpdate,LastFDs,Errors]) ->
-  {NewErrors,NewFDs} = update_detections_int(IngestList,Monitors,LastFDs),
-  {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),NewFDs,NewErrors ++ Errors]};
+  spawn(fun () ->
+    {NewErrors,FDSet} = update_detections_int(IngestList,Monitors,LastFDs), self() ! {detection_results, NewErrors,FDSet} end),
+    {noreply, S};
+handle_info(update_detections_now, S=[IngestList,Monitors,_TimeoutMins,_LastUpdate,LastFDs,_Errors]) ->
+  spawn(fun () ->
+    {NewErrors,FDSet} = update_detections_int(IngestList,Monitors,LastFDs), self() ! {detection_results, NewErrors,FDSet} end),
+    {noreply, S};
+handle_info({detection_results,NewErrors,FDSet}, [IngestList,Monitors,TimeoutMins,_LastUpdate,_LastFDs,Errors]) ->
+    error_logger:info_msg("afm_ingest_server: ~p new detection results have arrived with ~p errors.", [gb_sets:size(FDSet),length(NewErrors)]),
+    {noreply, [IngestList,Monitors,TimeoutMins,calendar:local_time(),FDSet,NewErrors ++ Errors]};
 handle_info(_Info,State) ->
   {noreply,State}.
 
@@ -125,19 +133,18 @@ update_detections_int(IngestList,Monitors,FDSet) ->
   Errors = lists:flatten(ErrorsL),
   New = case gb_sets:is_empty(FDSet) of
     true ->
-      % no previous result set in memory, must use dbase
+      % no previous result set in memory, must use dbase to identify new results
       find_detections_not_in_table(FDs);
     false ->
-      % we already have a previous result set in memory
+      % we already have a previous result set in memory, simply compare to current
+      % results
       lists:filter(fun (FD) -> not gb_sets:is_member(FD,FDSet) end, FDs)
   end,
-  case New of
-    [] -> ok;
-    _ -> notify_monitors({afm_new_detections,New},Monitors)
-  end,
-  case Errors of
-    [] -> ok;
-    _ -> notify_monitors({afm_errors,Errors},Monitors)
+  case {New,Errors} of
+    {[],[]} ->
+      ok;
+    _ ->
+      notify_monitors({afm_new_detections,New,Errors},Monitors)
   end,
   mnesia:transaction(fun() -> lists:foreach(fun mnesia:write/1, FDs) end, [], 3),
   {Errors,gb_sets:from_list(FDs)}.
