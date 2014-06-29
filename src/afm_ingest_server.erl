@@ -147,10 +147,11 @@ update_detections_int(IngestList,Monitors,FDSet) ->
   end,
   case {New,Errors} of
     {[],[]} ->
+      error_logger:info_msg("afm_ingest_server: no new detections found."),
       ok;
     _ ->
       error_logger:info_msg("afm_ingest_server: sending new detections to ~p monitors.", [length(Monitors)]),
-      notify_monitors({afm_new_detections,New,Errors},Monitors)
+      lists:map(fun (X) -> X ! {afm_new_detections,New,Errors} end, Monitors)
   end,
   mnesia:transaction(fun() -> lists:foreach(fun mnesia:write/1, FDs) end, [], 3),
   {Errors,gb_sets:from_list(FDs)}.
@@ -172,14 +173,6 @@ safe_retrieve_detections({Sat,Regions}) ->
   {Infos,FDs} = lists:unzip(Reports),
   Errors = lists:filter(fun (ok) -> false; (_) -> true end, Infos),
   {Errors,lists:flatten(FDs)}.
-
-
--spec notify_monitors(any(),[pid()]) -> ok.
-notify_monitors([],_Monitors) ->
-  ok;
-notify_monitors(Msg,Monitors) ->
-  lists:map(fun (X) -> X ! Msg end, Monitors),
-  ok.
 
 
 -spec find_detections_not_in_table([#afm_detection{}]) -> [#afm_detection{}].
