@@ -2,7 +2,7 @@
  [
   {description, "ActiveFireMap website fire detection retrieval and management."},
   {vsn, "1.0"},
-  {mod, {afm_ingest_app, [[{viirs,[conus]}, {goes,[conus]}, {avhrr,[conus]}, {modis,[conus]}],10]}},
+  {mod, {afm_ingest_app, [[{viirs,[conus]}, {avhrr,[conus]}, {modis,[conus]}],10]}},
   {modules, [afm_ingest_app,afm_ingest_sup,afm_ingest_server,afm_ingest_kml,afm_ingest_utils]},
   {registered, []},
   {applications, [kernel,stdlib,inets,mnesia]},

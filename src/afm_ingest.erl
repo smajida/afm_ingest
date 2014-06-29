@@ -120,4 +120,3 @@ ensure_table_exists(Name,RecFields,NdxFields) ->
       {atomic,ok} = mnesia:create_table(Name, [{attributes,RecFields}, {disc_copies,[node()]}, {index,NdxFields}, {type,bag}]),
       ok
   end.
-
