@@ -1,7 +1,8 @@
 -module(afm_ingest).
 -author("Martin Vejmelka <vejmelkam@gmail.com>").
 -export([start/0,init_afm_tables/0]).
--export([detections_since/1,detections_since/3,last_updated/0,current_detections/0]).
+-export([detections_since/1,detections_since/3,last_updated/0,
+         current_detections/0,count_stored_detections/0]).
 -export([update_now/0]).
 -export([subscribe/0,unsubscribe/0]).
 -export([parse_kmz_file/2,parse_kml_file/1,store_detections/1]).
@@ -59,6 +60,11 @@ case mnesia:transaction(
     Error ->
       Error
   end.
+
+
+-spec count_stored_detections() -> integer().
+count_stored_detections() ->
+  mnesia:table_info(afm_detection,size).
 
 
 -spec update_now() -> ok.
